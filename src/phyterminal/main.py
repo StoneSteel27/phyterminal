@@ -111,7 +111,7 @@ class Renderer:
                 self.set_world((y, x), "")
             # self._world = np.array([['']*1000]*1000)
             self.screen.refresh()
-            self.space.step(0.02)
+            self.space.step(0.1)
             self.screen.clear()
 
 
@@ -125,7 +125,7 @@ if __name__ == "__main__":
         poly = pymunk.Poly.create_box(body1, size=(l, b))
         space.add(body1, poly)
 
-    create_box(1, 90, 90, 10, 10)
+    create_box(10, 90, 90, 10, 10)
     create_box(1, 90, 150, 10, 10)
     create_box(1, 90, 200, 10, 10)
     b0 = space.static_body
