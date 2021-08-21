@@ -1,43 +1,44 @@
-import pymunk
 import curses
+import threading
+from typing import Any, Iterable, Union
+
 import numpy as np
+import pymunk
 from keys import KBHit
-import time
+
+from .shape import Shape
 
 
-class Body(pymunk.Body):
-    bodies = []
+def vertices(obj: Any) -> Union[list[pymunk.Vec2d], bool]:
+    """
+    Returns vertices of a polygon or a segment
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.bodies.append(self)
+    Returns the vertices of the object passed into the function,
+    if the object is a pymunk.shapes.Poly or pymunk.Segment objects
 
-    def vertices(self):
-        if hasattr(self, "shapes") and len(self.shapes) != 0:
-            return [
-                p.rotated(self.angle) + self.position
-                for p in list(self.shapes)[0].get_vertices()
-            ]
-        else:
-            return False
-
-
-class Segment(pymunk.Segment):
-    segments = []
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.segments.append(self)
-
-    def vertices(self):
+    :param obj: object of pymunk.shapes.Poly or pymunk.Segment
+    :return: list of coordinates, if found and object is vaild, else False
+    """
+    if isinstance(obj, pymunk.shapes.Poly):
         return [
-            self.body.position + self.a.rotated(self.body.angle),
-            self.body.position + self.b.rotated(self.body.angle),
+            p.rotated(obj.body.angle) + obj.body.position for p in obj.get_vertices()
         ]
+    elif isinstance(obj, pymunk.Segment):
+        return [
+            obj.body.position + obj.a.rotated(obj.body.angle),
+            obj.body.position + obj.b.rotated(obj.body.angle),
+        ]
+    else:
+        return False
 
 
 class Renderer:
-    def __init__(self, space, meters_per_pixel):
+    """The main rendering class for phyterminal"""
+
+    def __init__(
+        self, space: pymunk.space, meters_per_pixel: float, threaded_world: bool = False
+    ):
+        self.shape = Shape(pixel_drawing_func=self.set_world)
         self.meters_per_pixel = meters_per_pixel
         self._world = np.array([[""] * 1000] * 1000)
         self.space = space
@@ -45,94 +46,102 @@ class Renderer:
         self.screen = curses.initscr()
         self.height = curses.LINES - 1
         self.width = curses.COLS - 1
-        print_options = pymunk.SpaceDebugDrawOptions()
+        self.threaded_world = threaded_world
 
-    def set_world(self, index, value):
+        # self.screen.timeout(0)
+
+    def set_world(self, index: Iterable[int, int], value: str = "█") -> None:
+        """
+        Sets the index of given index to the value
+
+        :param index: index to be changed to the given value in world numpy array
+        :param value: the value to be set in the world numpy array
+        """
         try:
             self._world[index] = value
         except IndexError:
             pass
 
-    def drawDDA(self, x1, y1, x2, y2):
-        h = []
-        x, y = x1, y1
-        length = abs((x2 - x1)) if abs((x2 - x1)) > abs((y2 - y1)) else abs((y2 - y1))
-        if length == 0:
-            self.world[y1, x1]
-        dx = (x2 - x1) / float(length)
-        dy = (y2 - y1) / float(length)
+    def body_frame_coords(self) -> None:
+        """Calculating and Drawing objects on the screen from coordinates"""
+        for i in self.space.shapes:
+            if (
+                (vertices1 := vertices(i))
+                and (isinstance(i, pymunk.shapes.Poly))
+                and getattr(i, "visible", True)
+            ):
+                # print(vertices1)
+                vert = vertices1
+                vert = [v / self.meters_per_pixel for v in vert]
+                vert = [(int(v[0] * 2), self.height - int(v[1])) for v in vert]
+                self.shape.polygon(self.drawDDA, vert)
+            elif (
+                (vertices1 := vertices(i))
+                and (isinstance(i, pymunk.Segment))
+                and getattr(i, "visible", True)
+            ):
+                vert = vertices1
+                vert = [v / self.meters_per_pixel for v in vert]
+                vert = [(int(v[0] * 2), self.height - int(v[1])) for v in vert]
+                self.shape.line((vert[0][0], vert[0][1]), (vert[1][0], vert[1][1]))
 
-        self.set_world((int(y + 0.5), int(x + 0.5)), "█")
+    def run_world(self) -> None:
+        """
+        Runs the simulation
 
-        for i in range(length):
-            x += dx
-            y += dy
-            self.set_world((int(y + 0.5), int(x + 0.5)), "█")
+        Starts the physics simulations, and the rendering of the physics objects.
+        Can be in threaded mode for interactions with the simulation
+        """
+        def threaded():  # noqa: ANN201
+            while True:
+                if self.kb.kbhit():
+                    self.c = self.kb.getch()
+                    if ord(self.c) == 27:
+                        self.stop = True  # ESC
+                        curses.endwin()
+                        break
+                self.body_frame_coords()
+                ys, xs = np.where(
+                    self._world[: (curses.LINES - 1), : (curses.COLS - 1)] == "█"
+                )
+                # print((curses.LINES - 1),(curses.COLS - 1))
+                for y, x in zip(ys, xs):
+                    self.screen.addch(y, x, "█")
+                    self.set_world((y, x), "")
+                # self._world = np.array([['']*1000]*1000)
+                # key = self.screen.getch()
+                # self.stringer(0,0,'mx, my = %i,%i,%i \r'%(mx,my,b))
+                # self.space.bodies
+                self.screen.refresh()
+                self.space.step(1 / 50)
+                self.screen.clear()
 
-    def polygon(self, f, coords):
-        prev = ""
-        for i, n in enumerate(coords):
-            if i == 0:
-                prev = n
-                continue
-            f(prev[0], prev[1], n[0], n[1])
-            prev = n
+        if self.threaded_world:
+            threading.Thread(target=threaded).start()
         else:
-            f(coords[0][0], coords[0][1], prev[0], prev[1])
-
-    def body_frame_coords(self):
-        for i in Body.bodies:
-            if vertices := i.vertices():
-                vert = vertices
-                vert = [v / self.meters_per_pixel for v in vert]
-                vert = [(int(v[0] * 2), self.height - int(v[1])) for v in vert]
-                self.polygon(self.drawDDA, vert)
-
-    def segment_frame_coords(self):
-        for i in Segment.segments:
-            if vertices := i.vertices():
-                vert = vertices
-                vert = [v / self.meters_per_pixel for v in vert]
-                vert = [(int(v[0] * 2), self.height - int(v[1])) for v in vert]
-                self.drawDDA(vert[0][0], vert[0][1], vert[1][0], vert[1][1])
-
-    def run_world(self):
-        while True:
-            if self.kb.kbhit():
-                c = self.kb.getch()
-                if ord(c) == 27:  # ESC
-                    curses.endwin()
-                    break
-            self.segment_frame_coords()
-            self.body_frame_coords()
-            ys, xs = np.where(self._world[: self.height + 1, : self.width + 1] == "█")
-            for y, x in zip(ys, xs):
-                self.screen.addch(y, x, "█")
-                self.set_world((y, x), "")
-            # self._world = np.array([['']*1000]*1000)
-            self.screen.refresh()
-            self.space.step(0.1)
-            self.screen.clear()
+            threaded()
 
 
 if __name__ == "__main__":
     space = pymunk.Space()
-    space.gravity = 0, -1
+    space.gravity = 0, -10
 
-    def create_box(m, x, y, l, b):
-        body1 = Body(m, 1)
-        body1.position = x, y
-        poly = pymunk.Poly.create_box(body1, size=(l, b))
+    def create_box(mass, pos_x, pos_y, lenght, breath):  # noqa: ANN001,ANN201
+        """Just creates some boxes"""
+        body1 = pymunk.Body(mass, 1)
+        body1.position = pos_x, pos_y
+        poly = pymunk.Poly.create_box(body1, size=(lenght, breath))
         space.add(body1, poly)
 
     create_box(10, 90, 90, 10, 10)
     create_box(1, 90, 150, 10, 10)
     create_box(1, 90, 200, 10, 10)
     b0 = space.static_body
-    segment = Segment(b0, (60, 10), (120, 10), 1)
-    segment.elasticity = 1.0
+    segment = pymunk.Segment(b0, (-120, 10), (240, 10), 1)
+    # segment.elasticity = 1.0
     segment.friction = 1.0
     space.add(segment)
 
-    a = Renderer(space, 1.5)
+    a = Renderer(space, 1.5, threaded_world=False)
+    # threading.Thread(target=a.mouser).start()
     a.run_world()
