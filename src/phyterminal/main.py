@@ -50,15 +50,15 @@ class Renderer:
 
         # self.screen.timeout(0)
 
-    def set_world(self, index: Iterable[int, int], value: str = "█") -> None:
+    def set_world(self, x: int, y: int, value: str = "█") -> None:
         """
         Sets the index of given index to the value
 
-        :param index: index to be changed to the given value in world numpy array
+        :param x y: index to be changed to the given value in world numpy array
         :param value: the value to be set in the world numpy array
         """
         try:
-            self._world[index] = value
+            self._world[y,x] = value
         except IndexError:
             pass
 
@@ -74,7 +74,7 @@ class Renderer:
                 vert = vertices1
                 vert = [v / self.meters_per_pixel for v in vert]
                 vert = [(int(v[0] * 2), self.height - int(v[1])) for v in vert]
-                self.shape.polygon(self.drawDDA, vert)
+                self.shape.polygon(vert)
             elif (
                 (vertices1 := vertices(i))
                 and (isinstance(i, pymunk.Segment))
@@ -92,6 +92,7 @@ class Renderer:
         Starts the physics simulations, and the rendering of the physics objects.
         Can be in threaded mode for interactions with the simulation
         """
+
         def threaded():  # noqa: ANN201
             while True:
                 if self.kb.kbhit():
@@ -107,7 +108,7 @@ class Renderer:
                 # print((curses.LINES - 1),(curses.COLS - 1))
                 for y, x in zip(ys, xs):
                     self.screen.addch(y, x, "█")
-                    self.set_world((y, x), "")
+                    self.set_world(x,y, "")
                 # self._world = np.array([['']*1000]*1000)
                 # key = self.screen.getch()
                 # self.stringer(0,0,'mx, my = %i,%i,%i \r'%(mx,my,b))
