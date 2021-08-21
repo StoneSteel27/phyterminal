@@ -7,7 +7,7 @@ class Shape:
     def __init__(self, pixel_drawing_func: Callable):
         self.pixel_drawing_func = pixel_drawing_func
 
-    def polygon(self, coords: Iterable[Iterable[int, int]]) -> None:
+    def polygon(self, coords: Iterable[(int, int)]) -> None:
         """Draws a polygon using the given pixel_drawing_func"""
         prev = ""
         for i, n in enumerate(coords):
@@ -19,7 +19,7 @@ class Shape:
         else:
             self.line((coords[0][0], coords[0][1]), (prev[0], prev[1]))
 
-    def line(self, point1: Iterable[int, int], point2: Iterable[int, int]) -> None:
+    def line(self, point1: Iterable[int, int], point2: Iterable(int,int)) -> None:
         """Draws a line using the given pixel_drawing_func"""
         x1, y1 = point1
         x2, y2 = point2
