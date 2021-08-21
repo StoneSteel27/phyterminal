@@ -6,7 +6,7 @@ import numpy as np
 import pymunk
 from keys import KBHit
 
-from .shape import Shape
+from shape import Shape
 
 
 def vertices(obj: Any) -> Union[list[pymunk.Vec2d], bool]:
