@@ -1,0 +1,12 @@
+flake8~=3.7
+isort~=5.9
+pre-commit~=2.13.0
+flake8-annotations~=2.0
+flake8-bandit~=2.1
+flake8-docstrings~=1.5
+flake8-isort~=4.0
+
+# basic requirements to run the project
+pymunk==6.0.0
+cffi==1.14.5
+numpy==1.21.0
