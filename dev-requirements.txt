@@ -1,3 +1,4 @@
+#code formatters and checkers
 flake8~=3.7
 isort~=5.9
 pre-commit~=2.13.0
@@ -10,3 +11,4 @@ flake8-isort~=4.0
 pymunk==6.0.0
 cffi==1.14.5
 numpy==1.21.0
+windows-curses==2.2.0; sys.platform == 'win32'
