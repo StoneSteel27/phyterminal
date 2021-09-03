@@ -1,3 +1,4 @@
 pymunk==6.0.0
 cffi==1.14.5
 numpy==1.21.0
+windows-curses==2.2.0; sys.platform == 'win32'
