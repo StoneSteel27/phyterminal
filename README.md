@@ -4,3 +4,6 @@ Phyterminal is a 2D-physics renderer for <b>terminal</b>, which uses [Pymunk](ht
 ## Developer Logs
 ### Update 1: Boxes and Segments
 [![Phyterminal update 1](https://yt-embed.herokuapp.com/embed?v=igII7gpNs4I&img=0)](http://www.youtube.com/watch?v=igII7gpNs4I)
+
+### Update 2: Circles
+[![Phyterminal update 2](https://yt-embed.herokuapp.com/embed?v=aXxD_0Oplyw&img=0)](http://www.youtube.com/watch?v=aXxD_0Oplyw)
