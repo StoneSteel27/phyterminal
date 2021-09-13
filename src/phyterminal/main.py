@@ -1,11 +1,10 @@
 import curses
 import threading
-from typing import Any, Iterable, Union
+from typing import Any, Union
 
 import numpy as np
 import pymunk
 from keys import KBHit
-
 from shape import Shape
 
 
@@ -28,6 +27,8 @@ def vertices(obj: Any) -> Union[list[pymunk.Vec2d], bool]:
             obj.body.position + obj.a.rotated(obj.body.angle),
             obj.body.position + obj.b.rotated(obj.body.angle),
         ]
+    elif isinstance(obj, pymunk.Circle):
+        return [obj.body.position, obj.body.angle, obj.radius]
     else:
         return False
 
@@ -58,7 +59,7 @@ class Renderer:
         :param value: the value to be set in the world numpy array
         """
         try:
-            self._world[y,x] = value
+            self._world[y, x] = value
         except IndexError:
             pass
 
@@ -84,6 +85,22 @@ class Renderer:
                 vert = [v / self.meters_per_pixel for v in vert]
                 vert = [(int(v[0] * 2), self.height - int(v[1])) for v in vert]
                 self.shape.line((vert[0][0], vert[0][1]), (vert[1][0], vert[1][1]))
+            elif (
+                (vertices1 := vertices(i))
+                and (isinstance(i, pymunk.Circle))
+                and getattr(i, "visible", True)
+            ):
+                vert = vertices1[0]
+                vert = [v / self.meters_per_pixel for v in vert]
+                vert = [(int(vert[0] * 2), self.height - int(vert[1]))]
+                # print(len(vertices1),len(vert))
+                # print(vert[0][0],vert[0][1],vertices1[2]/self.meters_per_pixel,vertices1[1])
+                self.shape.circle(
+                    vert[0][0],
+                    vert[0][1],
+                    vertices1[2] / self.meters_per_pixel,
+                    vertices1[1],
+                )
 
     def run_world(self) -> None:
         """
@@ -108,13 +125,13 @@ class Renderer:
                 # print((curses.LINES - 1),(curses.COLS - 1))
                 for y, x in zip(ys, xs):
                     self.screen.addch(y, x, "█")
-                    self.set_world(x,y, "")
+                    self.set_world(x, y, "")
                 # self._world = np.array([['']*1000]*1000)
                 # key = self.screen.getch()
                 # self.stringer(0,0,'mx, my = %i,%i,%i \r'%(mx,my,b))
                 # self.space.bodies
                 self.screen.refresh()
-                self.space.step(1 / 50)
+                self.space.step(1 / 45)
                 self.screen.clear()
 
         if self.threaded_world:
@@ -125,21 +142,47 @@ class Renderer:
 
 if __name__ == "__main__":
     space = pymunk.Space()
-    space.gravity = 0, -10
+    space.gravity = 0, -20
+    space.damping = 0.9
 
     def create_box(mass, pos_x, pos_y, lenght, breath):  # noqa: ANN001,ANN201
         """Just creates some boxes"""
         body1 = pymunk.Body(mass, 1)
         body1.position = pos_x, pos_y
         poly = pymunk.Poly.create_box(body1, size=(lenght, breath))
+        poly.elasticity = 0.3
+        poly.friction = 0.8
         space.add(body1, poly)
 
-    create_box(10, 90, 90, 10, 10)
-    create_box(1, 90, 150, 10, 10)
-    create_box(1, 90, 200, 10, 10)
+    def create_circ(mass, pos_x, pos_y, radius):  # noqa: ANN001,ANN201
+        """Just creates some circles"""
+        body1 = pymunk.Body(mass, 1)
+        body1.position = pos_x, pos_y
+        poly = pymunk.Circle(body1, radius=radius)
+        poly.elasticity = 1
+        poly.friction = 0.8
+        space.add(body1, poly)
+        return body1
+
+    ### ground
+    # shape = pymunk.Segment(space.static_body, (5, 10), (595, 10), 1.0)
+    # shape.friction = 1.0
+    # shape.elasiticty = 0
+    # space.add(shape)
+
+    for i in range(8):
+        for j in range(8 - (i)):
+            create_box(0.1, 40 + 10 * i, 10 * (5 + j) - 35, 10, 10)
+    c = create_circ(100, 250, 30, 10)
+    c.velocity = (-155, -30)
+    c.angular_velocity = -2000000
     b0 = space.static_body
-    segment = pymunk.Segment(b0, (-120, 10), (240, 10), 1)
-    # segment.elasticity = 1.0
+    segment = pymunk.Segment(b0, (-120, 10), (540, 10), 1)
+    segment.elasticity = 1
+    segment.friction = 1.0
+    space.add(segment)
+    segment = pymunk.Segment(b0, (-0, 10), (-0, 200), 1)
+    segment.elasticity = 1
     segment.friction = 1.0
     space.add(segment)
 

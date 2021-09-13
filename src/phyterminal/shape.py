@@ -1,4 +1,5 @@
-from typing import Callable, Iterable
+import math
+from typing import Callable
 
 
 class Shape:
@@ -8,7 +9,11 @@ class Shape:
         self.pixel_drawing_func = pixel_drawing_func
 
     def polygon(self, coords: list[int, int]) -> None:
-        """Draws a polygon using the given pixel_drawing_func"""
+        """
+        Draws a closed polygon using the given pixel_drawing_func
+
+        :param coords: list containing coordinates of the corners of polygon
+        """
         prev = ""
         for i, n in enumerate(coords):
             if i == 0:
@@ -37,7 +42,14 @@ class Shape:
             self.pixel_drawing_func(int(x + 0.5), int(y + 0.5))
 
     def ellipse(self, rx: int, ry: int, xc: int, yc: int) -> None:
-        """Draws a ellipse using the given pixel_drawing_func"""
+        """
+        Draws a ellipse using the given pixel_drawing_func
+
+        :param rx: width of the ellipse in x axis
+        :param ry: width of the ellipse in y axis
+        :param xc: x coordinate of the center of ellipse
+        :param yc: y coordinate of the center of ellipse
+        """
         x = 0
         y = ry
 
@@ -95,3 +107,32 @@ class Shape:
                 dx = dx + (2 * ry * ry)
                 dy = dy - (2 * rx * rx)
                 d2 = d2 + dx - dy + (rx * rx)
+
+    def circle(self, x: int, y: int, radius: int, theta: float = 0) -> None:
+        """
+         Draws a ellipse using the given pixel_drawing_func
+
+        :param x: x coordinate of the center of circle
+        :param y: y coordinate of the center of circle
+        :param radius: radius of the circle
+        :param theta: angle of rotation of circle, defaults to 0
+        """
+        radius = round(radius)
+        self.ellipse(radius * 2, radius, x, y)
+
+        # a rotating line to produce rotating effect
+        center_x, center_y = x, y
+        end_x, end_y = x + round(radius * 2 * math.sin(-theta)), y - round(
+            radius * math.cos(-theta)
+        )
+        self.line([center_x, center_y], [end_x, end_y])
+
+        # gap in the circle drawing to make rotating effect
+        gap_x, gap_y = x + round(
+            radius * 2 * math.sin(-(theta + math.radians(90)))
+        ), y - round(radius * math.cos(-(theta + math.radians(90))))
+        self.pixel_drawing_func(gap_x, gap_y, "")
+        gap_x, gap_y = x + round(
+            radius * 2 * math.sin(-(theta - math.radians(120)))
+        ), y - round(radius * math.cos(-(theta - math.radians(120))))
+        self.pixel_drawing_func(gap_x, gap_y, "")
